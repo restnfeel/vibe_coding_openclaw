@@ -3,8 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - master
-  workflow_dispatch:  # 수동 실행 버튼 활성화
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,13 +20,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: npm run build
 
       - name: Deploy to GitHub Pages

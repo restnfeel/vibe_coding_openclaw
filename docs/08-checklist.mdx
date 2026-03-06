@@ -1,0 +1,164 @@
+---
+id: checklist
+slug: /checklist
+sidebar_label: "08. 체크리스트"
+sidebar_position: 8
+---
+
+# 체크리스트
+
+> 학습 진행 상황을 점검하고, 실전 운영을 위한 체크리스트입니다.
+
+---
+
+## 학습 완료 체크리스트
+
+### 기본 개념
+
+- [ ] OpenClaw가 무엇인지 설명할 수 있다
+- [ ] Gateway, Pi 에이전트, Tools, Skills의 관계를 이해했다
+- [ ] `openclaw.json` 설정 파일 구조를 파악했다
+
+### 설치 & 설정
+
+- [ ] Node 22+ 환경에서 OpenClaw를 설치했다
+- [ ] `openclaw onboard --install-daemon` 실행 완료
+- [ ] `openclaw gateway` 로 Gateway 시작 가능
+- [ ] `openclaw doctor`로 설정 점검 통과
+- [ ] 대시보드(`http://127.0.0.1:18789/`) 접속 확인
+
+### Skills 기초
+
+- [ ] SKILL.md 파일 구조(프론트매터 + 마크다운)를 이해했다
+- [ ] Skills 저장 위치 4곳과 우선순위를 알고 있다
+- [ ] Hello World 스킬을 직접 만들고 테스트했다
+- [ ] `{baseDir}`로 보조 파일 참조 방법을 안다
+
+### Skills 고급
+
+- [ ] 로드 게이팅 (requires.bins, requires.env, os) 설정 가능
+- [ ] `openclaw.json`에서 스킬별 설정 오버라이드 가능
+- [ ] 환경 변수 주입 방식을 이해했다
+- [ ] `user-invocable`과 `command-dispatch` 차이를 안다
+- [ ] 핫 리로드 설정(`watch: true`)을 적용했다
+
+### 도구 & 채널
+
+- [ ] 도구 프로필(minimal, coding, messaging, full) 차이를 안다
+- [ ] `allow`/`deny` 로 도구 접근 제어 가능
+- [ ] 최소 1개 이상의 메시징 채널을 연동했다
+- [ ] DM 접근 모델(pairing, allowlist 등)을 설정했다
+
+### CloudType 배포
+
+- [ ] Dockerfile 작성 가능
+- [ ] CloudType에서 환경 변수를 안전하게 설정했다
+- [ ] 배포 후 Gateway 접속 및 인증 확인
+- [ ] 보안 체크리스트 점검 완료
+
+---
+
+## 실전 운영 체크리스트
+
+### 보안
+
+| 항목 | 명령어 / 설정 |
+|------|--------------|
+| 보안 감사 실행 | `openclaw security audit --deep` |
+| Gateway 인증 활성화 | `gateway.auth.token` 설정 |
+| 실행 도구 제한 | `tools.deny: ["group:runtime"]` |
+| DM 정책 설정 | `channels.*.dmPolicy: "pairing"` |
+| 샌드박싱 활성화 | `agents.defaults.sandbox.mode: "all"` |
+
+### 운영
+
+| 항목 | 명령어 |
+|------|--------|
+| 상태 확인 | `openclaw gateway status --deep` |
+| 실시간 로그 | `openclaw logs --follow` |
+| 설정 검증 | `openclaw doctor` |
+| Gateway 재시작 | `openclaw gateway restart` |
+| 시크릿 리로드 | `openclaw secrets reload` |
+
+### Skills 관리
+
+| 항목 | 방법 |
+|------|------|
+| 스킬 새로고침 | 에이전트에게 "refresh skills" 요청 |
+| ClawHub 업데이트 | `clawhub update --all` |
+| 스킬 테스트 | `openclaw agent --message "스킬 테스트"` |
+
+---
+
+## 빠른 참조: 자주 쓰는 명령어
+
+```bash
+# 설치
+npm install -g openclaw@latest
+
+# 초기 설정
+openclaw onboard --install-daemon
+openclaw channels login
+
+# Gateway 관리
+openclaw gateway --port 18789
+openclaw gateway status --deep --json
+openclaw gateway restart
+openclaw gateway stop
+
+# 진단
+openclaw doctor
+openclaw status
+openclaw logs --follow
+
+# 보안
+openclaw security audit --deep
+
+# 에이전트 테스트
+openclaw agent --message "hello"
+
+# ClawHub
+clawhub install <skill-slug>
+clawhub update --all
+```
+
+---
+
+## Skills 빠른 참조: SKILL.md 템플릿
+
+```markdown
+---
+name: my_skill_name
+description: 이 스킬이 하는 일을 한 줄로 설명
+user-invocable: true
+metadata: {"openclaw": {"requires": {"bins": ["필요한_도구"]}, "os": ["darwin", "linux", "win32"]}}
+---
+
+# 스킬 제목
+
+## 사용 시점
+사용자가 ~를 요청하면 이 스킬을 적용합니다.
+
+## 실행 절차
+1. `도구이름`으로 ~를 수행
+2. `도구이름`으로 ~를 수행
+3. 결과 출력
+
+## 출력 형식
+(표, 코드 블록 등 구체적 형식 정의)
+
+## 제약 조건
+- ...
+```
+
+---
+
+## 참고 링크
+
+| 자료 | URL |
+|------|-----|
+| OpenClaw 공식 문서 | [docs.openclaw.ai](https://docs.openclaw.ai/) |
+| Skills 만들기 (공식) | [docs.openclaw.ai/tools/creating-skills](https://docs.openclaw.ai/tools/creating-skills) |
+| ClawHub 레지스트리 | [clawhub.com](https://clawhub.com/) |
+| CloudType | [cloudtype.io/ko](https://cloudtype.io/ko) |
+| CloudType 템플릿 | [cloudtype.io/ko/templates](https://cloudtype.io/ko/templates) |

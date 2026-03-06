@@ -1,0 +1,181 @@
+---
+id: skills-overview
+slug: /skills-overview
+sidebar_label: "03. Skills 개요"
+sidebar_position: 3
+---
+
+# Skills 시스템 개요
+
+> Skills는 OpenClaw의 **가장 강력한 기능**입니다.
+> 에이전트에게 "무엇을 어떻게 하라"고 가르치는 **구조화된 지시서**입니다.
+
+---
+
+## Skills가 뭔가요?
+
+한 줄 요약: **`SKILL.md` 파일 하나가 곧 하나의 Skill**입니다.
+
+Skills는 YAML 프론트매터(메타데이터)와 마크다운(지시문)으로 구성됩니다. 에이전트가 세션을 시작할 때 이 파일들을 읽어서 시스템 프롬프트에 주입합니다.
+
+```markdown
+---
+name: my_skill
+description: 이 스킬이 하는 일을 설명합니다.
+---
+
+# 지시문
+
+여기에 에이전트가 따라야 할 지시를 마크다운으로 작성합니다.
+```
+
+---
+
+## 왜 Skills가 중요한가?
+
+### 기존 방식의 문제
+
+```
+매번 상세한 프롬프트 작성 → 반복 → 비효율 → 품질 불일치
+```
+
+### Skills 방식의 장점
+
+```
+한 번 작성 → 자동 로드 → 일관된 품질 → 재사용 가능
+```
+
+| 비교 항목 | 수동 프롬프트 | Skills 기반 |
+|----------|-------------|------------|
+| 반복 작업 | 매번 지시 | 자동 적용 |
+| 품질 일관성 | 들쑥날쑥 | 일관성 유지 |
+| 팀 공유 | 어려움 | 디렉토리 공유로 해결 |
+| 커뮤니티 | 없음 | ClawHub 레지스트리 |
+
+---
+
+## Skills의 작동 원리
+
+```
+① 에이전트 세션 시작
+    ↓
+② Skills 디렉토리 스캔
+    ↓
+③ 로드 조건(OS, 필수 도구 등) 확인
+    ↓
+④ 통과한 Skills를 시스템 프롬프트에 주입
+    ↓
+⑤ 에이전트가 Skills 지시를 따라 작업 수행
+```
+
+### 중요한 포인트
+
+- Skills는 **세션 시작 시 스냅샷**으로 캡처됩니다
+- 수정 후에는 **새 세션**에서 반영됩니다
+- `watch: true` 설정 시 실시간 리로드도 가능합니다
+
+---
+
+## Skills 저장 위치와 우선순위
+
+Skills는 4가지 위치에 저장할 수 있으며, 같은 이름이 충돌하면 위쪽이 우선합니다.
+
+```
+우선순위 높음
+  │
+  ├── 1. 워크스페이스 Skills    <workspace>/skills/
+  ├── 2. 관리형/로컬 Skills     ~/.openclaw/skills/
+  ├── 3. 번들 Skills            설치 시 포함된 기본 Skills
+  └── 4. 추가 디렉토리          skills.load.extraDirs로 지정
+  │
+우선순위 낮음
+```
+
+:::tip 실습 권장 경로
+처음 시작할 때는 **워크스페이스 Skills** (`<workspace>/skills/`)에 만드는 것을 권장합니다.
+프로젝트별로 격리되고, Git으로 버전 관리도 편합니다.
+:::
+
+---
+
+## Skills 디렉토리 구조
+
+```
+~/.openclaw/workspace/skills/
+├── hello-world/
+│   └── SKILL.md          ← 필수 파일
+├── api-generator/
+│   ├── SKILL.md
+│   ├── template.py       ← 선택: 보조 스크립트
+│   └── examples/         ← 선택: 예제 파일
+└── data-pipeline/
+    └── SKILL.md
+```
+
+**핵심**: 각 Skills 디렉토리에 `SKILL.md` 파일이 반드시 있어야 합니다.
+
+---
+
+## SKILL.md 프론트매터 한눈에 보기
+
+### 필수 필드
+
+| 필드 | 설명 | 예시 |
+|------|------|------|
+| `name` | 스킬 식별자 | `hello_world` |
+| `description` | 스킬 설명 | `사용자에게 인사하는 스킬` |
+
+### 선택 필드
+
+| 필드 | 설명 | 기본값 |
+|------|------|--------|
+| `homepage` | 스킬 홈페이지 URL | - |
+| `user-invocable` | 슬래시 명령으로 노출 여부 | `true` |
+| `disable-model-invocation` | 모델 프롬프트에서 제외 | `false` |
+| `command-dispatch` | `"tool"` 설정 시 모델 우회 | - |
+| `command-tool` | 직접 실행할 도구 이름 | - |
+| `command-arg-mode` | 인자 전달 방식 (`raw` / `parsed`) | `raw` |
+| `metadata` | 추가 메타데이터 (JSON, 한 줄) | - |
+
+---
+
+## 토큰 비용 감각
+
+Skills는 시스템 프롬프트에 주입되므로 토큰을 소비합니다. 대략적인 계산:
+
+```
+스킬당 비용 ≈ 97 + name길이 + description길이 + location길이 (문자)
+            ≈ 약 24 토큰/스킬 (기본 오버헤드)
+            + 마크다운 지시문 토큰
+```
+
+:::note 팁
+간결하고 핵심만 담은 Skills가 좋은 Skills입니다. 불필요한 설명은 토큰 낭비입니다.
+:::
+
+---
+
+## ClawHub — Skills 공유 플랫폼
+
+[ClawHub](https://clawhub.com/)는 커뮤니티 Skills 레지스트리입니다.
+
+```bash
+# 스킬 설치
+clawhub install <skill-slug>
+
+# 모든 스킬 업데이트
+clawhub update --all
+
+# 동기화
+clawhub sync --all
+```
+
+:::danger 보안 주의
+서드파티 Skills는 **신뢰할 수 없는 코드**와 동일합니다. 설치 전에 반드시 내용을 읽고 검증하세요.
+:::
+
+---
+
+## 다음 단계
+
+Skills의 개념을 이해했으면, [04. Skills 만들기](/skills-creating)에서 직접 첫 번째 Skill을 만들어 보세요!

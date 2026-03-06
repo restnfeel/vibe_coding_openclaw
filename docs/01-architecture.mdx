@@ -1,0 +1,139 @@
+---
+id: architecture
+slug: /architecture
+sidebar_label: "01. 아키텍처"
+sidebar_position: 1
+---
+
+# OpenClaw 전체 아키텍처
+
+> OpenClaw는 **셀프 호스팅 AI 에이전트 게이트웨이**입니다.
+> 하나의 Gateway 프로세스가 여러 메시징 채널과 AI 에이전트를 연결합니다.
+
+---
+
+## 핵심 구조 한눈에 보기
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Gateway (허브)                     │
+│                  openclaw gateway                    │
+├──────────┬──────────┬──────────┬───────────┬────────┤
+│ WhatsApp │ Telegram │ Discord  │  Slack    │ 30+    │
+│          │          │          │           │ 채널    │
+└────┬─────┴────┬─────┴────┬─────┴─────┬─────┴────────┘
+     │          │          │           │
+     ▼          ▼          ▼           ▼
+┌─────────────────────────────────────────────────────┐
+│              Pi 에이전트 (AI 두뇌)                    │
+│         LLM 모델 + Tools + Skills                    │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 주요 구성 요소
+
+### 1. Gateway — 중앙 허브
+
+Gateway는 OpenClaw의 **심장**입니다. 모든 메시지가 Gateway를 통해 라우팅됩니다.
+
+| 역할 | 설명 |
+|------|------|
+| 채널 연동 | WhatsApp, Telegram, Discord 등 30+ 채널 통합 |
+| 인증 관리 | 토큰/비밀번호 기반 접근 제어 |
+| 세션 관리 | 대화 상태 유지 및 복원 |
+| 핫 리로드 | 설정 변경 시 자동 반영 (`hybrid` 모드 기본) |
+
+**기본 포트**: `18789`
+**대시보드**: `http://127.0.0.1:18789/`
+
+### 2. Pi 에이전트 — AI 두뇌
+
+Pi 에이전트는 실제 작업을 수행하는 AI 에이전트입니다.
+
+- **LLM 모델**: 텍스트 생성, 이미지 분석 등 AI 기능
+- **Tools**: 브라우저 자동화, 파일 관리, 웹 검색 등 도구
+- **Skills**: 에이전트에게 특정 작업 수행법을 가르치는 지시서
+
+### 3. Tools — 에이전트의 손
+
+에이전트가 외부 세계와 상호작용하는 도구 모음입니다.
+
+```
+도구 프로필(Tool Profiles)
+├── minimal    → 세션 상태만 조회
+├── coding     → 파일 시스템, 런타임, 이미지 분석
+├── messaging  → 메시징 채널, 세션 관리
+└── full       → 모든 도구 제한 없음
+```
+
+주요 도구 그룹:
+
+| 그룹 | 포함 도구 | 용도 |
+|------|----------|------|
+| `group:runtime` | exec, bash, process | 셸 명령 실행 |
+| `group:fs` | read, write, edit, apply_patch | 파일 작업 |
+| `group:web` | web_search, web_fetch | 웹 검색/크롤링 |
+| `group:ui` | browser, canvas | 브라우저/UI 자동화 |
+| `group:messaging` | message | 메시지 전송 |
+| `group:sessions` | sessions_list, sessions_spawn 등 | 세션/서브에이전트 |
+
+### 4. Skills — 에이전트의 지식
+
+> Skills는 이 가이드의 **핵심 주제**입니다. [04. Skills 만들기](/skills-creating)에서 상세히 다룹니다.
+
+Skills는 `SKILL.md` 파일로 정의되며, 에이전트에게 특정 도구를 특정 방식으로 사용하라고 가르칩니다.
+
+```
+Skills = 구조화된 지시서
+       = YAML 프론트매터(메타데이터) + 마크다운(지시문)
+```
+
+---
+
+## 설정 파일
+
+OpenClaw의 모든 설정은 `~/.openclaw/openclaw.json`에 저장됩니다.
+
+```json5
+{
+  // 게이트웨이 포트
+  gateway: { port: 18789 },
+
+  // 채널 설정
+  channels: {
+    whatsapp: { allowFrom: ["+821012345678"] },
+    discord: { token: "..." }
+  },
+
+  // 도구 프로필
+  tools: { profile: "coding" },
+
+  // 에이전트 기본 모델
+  agents: {
+    defaults: {
+      model: { primary: "anthropic/claude-sonnet-4-20250514" }
+    }
+  }
+}
+```
+
+---
+
+## 에이전트 실행 흐름
+
+```
+사용자 메시지 → Gateway 수신 → 세션 확인/생성
+    → 모델 결정 → Skills 스냅샷 로드
+    → 시스템 프롬프트 구성 (Skills 주입)
+    → LLM 호출 → 도구 실행 → 응답 반환
+```
+
+**핵심 포인트**: Skills는 세션 시작 시 스냅샷으로 캡처되어 시스템 프롬프트에 주입됩니다. 따라서 Skills를 수정하면 **새 세션**에서 반영됩니다.
+
+---
+
+## 다음 단계
+
+아키텍처를 파악했으면, [02. 설치 & 설정](/installation)으로 이동하여 직접 OpenClaw를 설치해 보세요.

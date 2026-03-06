@@ -1,0 +1,204 @@
+---
+id: installation
+slug: /installation
+sidebar_label: "02. 설치 & 설정"
+sidebar_position: 2
+---
+
+# 설치 & 초기 설정
+
+> Node 22+ 환경이 필요합니다. 설치부터 대시보드 확인까지 15분이면 충분합니다.
+
+---
+
+## 설치 방법
+
+### npm (가장 간단)
+
+```bash
+npm install -g openclaw@latest
+```
+
+### 기타 방법
+
+| 방법 | 명령어 |
+|------|--------|
+| macOS/Linux 스크립트 | `curl -fsSL https://openclaw.ai/install.sh \| bash` |
+| Windows PowerShell | `iwr -useb https://openclaw.ai/install.ps1 \| iex` |
+| pnpm | `pnpm add -g openclaw@latest && pnpm approve-builds -g` |
+| Docker | [Docker 가이드](https://docs.openclaw.ai/install/docker) 참고 |
+| 소스 빌드 | 아래 참고 |
+
+**소스에서 빌드**:
+```bash
+git clone https://github.com/openclaw/openclaw.git
+cd openclaw
+pnpm install
+pnpm ui:build
+pnpm build
+pnpm link --global
+```
+
+---
+
+## 초기 설정 (3단계)
+
+### Step 1: 온보딩
+
+```bash
+openclaw onboard --install-daemon
+```
+
+이 명령은:
+- 기본 설정 파일(`~/.openclaw/openclaw.json`) 생성
+- 데몬(백그라운드 서비스) 등록
+- API 키 설정 안내
+
+### Step 2: 채널 로그인
+
+```bash
+openclaw channels login
+```
+
+사용하려는 메시징 채널(WhatsApp, Telegram 등)에 로그인합니다.
+
+### Step 3: Gateway 시작
+
+```bash
+openclaw gateway --port 18789
+```
+
+대시보드 접속: **http://127.0.0.1:18789/**
+
+---
+
+## 설정 확인
+
+```bash
+# 설정 상태 점검
+openclaw doctor
+
+# 게이트웨이 상태 확인
+openclaw status
+
+# 대시보드 열기
+openclaw dashboard
+```
+
+---
+
+## 핵심 환경 변수
+
+| 변수 | 용도 | 기본값 |
+|------|------|--------|
+| `OPENCLAW_HOME` | 내부 경로 해석 디렉토리 | `~/.openclaw` |
+| `OPENCLAW_STATE_DIR` | 상태 저장 디렉토리 재정의 | - |
+| `OPENCLAW_CONFIG_PATH` | 설정 파일 경로 재정의 | - |
+| `OPENCLAW_GATEWAY_PORT` | 게이트웨이 포트 재정의 | `18789` |
+| `OPENCLAW_GATEWAY_TOKEN` | 인증 토큰 | - |
+
+---
+
+## 포트 결정 우선순위
+
+```
+1. --port CLI 플래그        (최우선)
+2. OPENCLAW_GATEWAY_PORT    (환경 변수)
+3. gateway.port             (설정 파일)
+4. 18789                    (기본값)
+```
+
+---
+
+## 기본 설정 예시
+
+`~/.openclaw/openclaw.json`:
+
+```json5
+{
+  // 게이트웨이
+  gateway: {
+    port: 18789,
+    reload: { mode: "hybrid" }
+  },
+
+  // 채널
+  channels: {
+    whatsapp: {
+      allowFrom: ["+821012345678"],
+      groups: { "*": { requireMention: true } }
+    }
+  },
+
+  // 멘션 패턴
+  messages: {
+    groupChat: { mentionPatterns: ["@openclaw"] }
+  },
+
+  // 도구 설정
+  tools: {
+    profile: "coding"
+  },
+
+  // 에이전트 모델 설정
+  agents: {
+    defaults: {
+      model: {
+        primary: "anthropic/claude-sonnet-4-20250514",
+        fallbacks: ["openai/gpt-4o"]
+      }
+    }
+  }
+}
+```
+
+---
+
+## 인증 설정 (원격 접속 시)
+
+로컬이 아닌 주소에 바인딩할 때는 인증이 필수입니다.
+
+```json5
+{
+  gateway: {
+    auth: {
+      // 방법 1: 토큰 인증
+      token: "my-secret-token",
+      // 방법 2: 비밀번호 인증
+      // password: "my-password"
+    }
+  }
+}
+```
+
+또는 환경 변수:
+```bash
+export OPENCLAW_GATEWAY_TOKEN="my-secret-token"
+```
+
+---
+
+## 유용한 운영 명령어
+
+```bash
+# 게이트웨이 상태 (상세)
+openclaw gateway status --deep --json
+
+# 게이트웨이 재시작
+openclaw gateway restart
+
+# 게이트웨이 중지
+openclaw gateway stop
+
+# 시크릿 새로고침
+openclaw secrets reload
+
+# 실시간 로그
+openclaw logs --follow
+```
+
+---
+
+## 다음 단계
+
+설치가 완료되었으면, [03. Skills 개요](/skills-overview)에서 OpenClaw의 핵심 기능인 Skills 시스템을 알아보세요.

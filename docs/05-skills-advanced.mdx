@@ -1,0 +1,299 @@
+---
+id: skills-advanced
+slug: /skills-advanced
+sidebar_label: "05. Skills 고급 활용"
+sidebar_position: 5
+---
+
+# Skills 고급 활용
+
+> 로드 게이팅, 환경 변수 주입, 설정 오버라이드, 인스톨러까지
+> Skills를 프로 수준으로 활용하는 방법을 다룹니다.
+
+---
+
+## 1. 로드 게이팅 (Load-Time Filtering)
+
+모든 스킬이 항상 로드될 필요는 없습니다. 특정 조건에서만 로드되도록 **게이팅**을 설정할 수 있습니다.
+
+### 프론트매터의 metadata 필드
+
+```markdown
+---
+name: my_gated_skill
+description: 특정 조건에서만 로드되는 스킬
+metadata: {"openclaw": {"requires": {"bins": ["docker"], "env": ["DOCKER_HOST"]}, "os": ["linux", "darwin"]}}
+---
+```
+
+### 게이팅 조건 종류
+
+#### 기본 플래그
+
+| 플래그 | 설명 |
+|--------|------|
+| `always: true` | 다른 조건 무시, 항상 로드 |
+| `emoji` | macOS UI에 표시할 이모지 |
+| `os` | 운영체제 제한: `["darwin", "linux", "win32"]` |
+
+#### requires — 모든 조건 충족 필요
+
+| 조건 | 설명 | 예시 |
+|------|------|------|
+| `requires.bins` | PATH에 있어야 할 실행 파일 | `["docker", "kubectl"]` |
+| `requires.anyBins` | 하나 이상 있으면 통과 | `["npm", "pnpm", "yarn"]` |
+| `requires.env` | 존재해야 할 환경 변수 | `["AWS_ACCESS_KEY_ID"]` |
+| `requires.config` | truthy여야 할 openclaw.json 경로 | `["browser.enabled"]` |
+
+### 실전 예시: Docker 전용 스킬
+
+```markdown
+---
+name: docker_deploy
+description: Docker 컨테이너를 빌드하고 배포합니다.
+metadata: {"openclaw": {"requires": {"bins": ["docker", "docker-compose"]}, "os": ["linux", "darwin"]}}
+---
+
+# Docker 배포 스킬
+
+이 스킬은 Docker와 docker-compose가 설치된 Linux/macOS에서만 로드됩니다.
+...
+```
+
+### 실전 예시: API 키 기반 게이팅
+
+```markdown
+---
+name: gemini_analyst
+description: Gemini API를 사용한 고급 분석 스킬
+metadata: {"openclaw": {"requires": {"env": ["GEMINI_API_KEY"]}, "primaryEnv": "GEMINI_API_KEY"}}
+---
+
+# Gemini 분석 스킬
+
+GEMINI_API_KEY 환경 변수가 설정된 경우에만 로드됩니다.
+`primaryEnv`를 지정하면 UI에서 이 키가 스킬의 주요 인증 수단임을 표시합니다.
+...
+```
+
+---
+
+## 2. 설정 오버라이드
+
+`~/.openclaw/openclaw.json`에서 스킬별 설정을 관리할 수 있습니다.
+
+### 기본 구조
+
+```json5
+{
+  skills: {
+    entries: {
+      "my-skill": {
+        // 스킬 활성화/비활성화
+        enabled: true,
+
+        // API 키 주입
+        apiKey: {
+          source: "env",
+          provider: "default",
+          id: "MY_API_KEY"
+        },
+
+        // 환경 변수 주입
+        env: {
+          DATABASE_URL: "postgresql://localhost/mydb",
+          LOG_LEVEL: "debug"
+        },
+
+        // 커스텀 설정
+        config: {
+          maxRetries: 3,
+          timeout: 30000
+        }
+      }
+    },
+
+    // 번들 스킬 화이트리스트 (지정된 것만 로드)
+    allowBundled: ["web-search", "browser"]
+  }
+}
+```
+
+### 주요 규칙
+
+| 규칙 | 설명 |
+|------|------|
+| `enabled: false` | 번들 스킬도 비활성화 가능 |
+| `env` 주입 | 이미 설정된 환경 변수는 덮어쓰지 않음 |
+| `apiKey` | 문자열 또는 SecretRef 객체 지원 |
+| `allowBundled` | 번들 스킬에만 적용, 워크스페이스/관리형에는 영향 없음 |
+
+### 환경 변수 주입 흐름
+
+```
+에이전트 실행 시작
+  → 스킬 메타데이터 읽기
+  → skills.entries.<key>.env 또는 apiKey를 process.env에 주입
+  → 시스템 프롬프트 구성 (Skills 포함)
+  → 에이전트 작업 수행
+  → 실행 종료 후 원래 환경 복원
+```
+
+:::note 중요
+환경 변수 주입은 **에이전트 실행 범위(scope)**에만 적용됩니다. 글로벌 셸 환경에는 영향 없습니다.
+:::
+
+---
+
+## 3. 세션 스냅샷과 핫 리로드
+
+### 기본 동작
+
+Skills는 세션 시작 시 **스냅샷**으로 캡처됩니다. 진행 중인 세션에서 SKILL.md를 수정해도 반영되지 않습니다.
+
+### 핫 리로드 활성화
+
+```json5
+{
+  skills: {
+    load: {
+      watch: true,           // 파일 변경 감시
+      watchDebounceMs: 250   // 디바운스 시간 (ms)
+    }
+  }
+}
+```
+
+이 설정을 켜면:
+- SKILL.md 파일 변경 시 자동 감지
+- 250ms 디바운스 후 리로드
+- **새 세션**에서 변경사항 반영
+
+---
+
+## 4. 인스톨러 스펙 (macOS)
+
+Skills가 의존하는 도구를 자동 설치할 수 있습니다. macOS에서 지원됩니다.
+
+### 지원 인스톨러
+
+| 인스톨러 | 용도 | 예시 |
+|---------|------|------|
+| `brew` | Homebrew 패키지 | `ffmpeg`, `jq` |
+| `node` | npm 글로벌 패키지 | `typescript`, `eslint` |
+| `go` | Go 바이너리 | `github.com/user/tool` |
+| `uv` | Python uv 도구 | `ruff`, `black` |
+| `download` | URL에서 직접 다운로드 | 바이너리 파일 |
+
+---
+
+## 5. 실전 고급 스킬 예시
+
+### 멀티 도구 조합 스킬
+
+```markdown
+---
+name: full_stack_scaffold
+description: 풀스택 프로젝트를 스캐폴딩합니다.
+metadata: {"openclaw": {"requires": {"anyBins": ["npm", "pnpm"]}, "os": ["darwin", "linux", "win32"]}}
+---
+
+# 풀스택 스캐폴딩 스킬
+
+## 실행 조건
+사용자가 새 프로젝트 생성을 요청하면 적용합니다.
+
+## 사용 도구
+- `exec`: 프로젝트 생성 명령 실행
+- `write`: 설정 파일 생성
+- `read`: 기존 설정 확인
+
+## 실행 순서
+
+### Phase 1: 백엔드
+1. `exec`로 FastAPI 프로젝트 초기화
+2. `write`로 `pyproject.toml`, `.env.example` 생성
+3. `exec`로 의존성 설치
+
+### Phase 2: 프론트엔드
+4. `exec`로 Next.js 프로젝트 생성
+5. `write`로 환경 설정 파일 생성
+
+### Phase 3: 인프라
+6. `write`로 `docker-compose.yml` 생성
+7. `write`로 `Makefile` 생성
+
+## 출력
+생성된 프로젝트 구조를 트리 형태로 출력합니다.
+```
+
+### 조건부 동작 스킬
+
+```markdown
+---
+name: smart_test
+description: 프로젝트 타입에 따라 적절한 테스트를 실행합니다.
+user-invocable: true
+---
+
+# 스마트 테스트 스킬
+
+## 판단 기준
+1. `read`로 프로젝트 루트의 설정 파일 확인
+2. 아래 기준으로 프로젝트 타입 판단:
+
+| 파일 존재 | 프로젝트 타입 | 테스트 명령 |
+|----------|-------------|------------|
+| `package.json` | Node.js | `npm test` |
+| `pyproject.toml` | Python | `pytest` |
+| `go.mod` | Go | `go test ./...` |
+| `Cargo.toml` | Rust | `cargo test` |
+
+3. 판단된 타입에 맞는 테스트 명령을 `exec`로 실행
+4. 결과 요약 출력
+```
+
+---
+
+## 6. Lobster 워크플로우와 연계
+
+Skills와 Lobster(워크플로우 런타임)를 결합하면 **다단계 자동화 파이프라인**을 만들 수 있습니다.
+
+### Lobster 파이프라인 예시
+
+```yaml
+name: inbox-triage
+args:
+  tag:
+    default: "family"
+steps:
+  - id: collect
+    command: inbox list --json
+  - id: categorize
+    command: inbox categorize --json
+    stdin: $collect.stdout
+  - id: approve
+    command: inbox apply --approve
+    stdin: $categorize.stdout
+    approval: required          # 사용자 승인 게이트
+  - id: execute
+    command: inbox apply --execute
+    stdin: $categorize.stdout
+    condition: $approve.approved
+```
+
+Lobster를 활성화하려면:
+
+```json5
+{
+  tools: {
+    alsoAllow: ["lobster"]
+  }
+}
+```
+
+---
+
+## 다음 단계
+
+Skills의 고급 기능까지 배웠습니다. [06. 도구 & 채널](/tools-channels)에서 OpenClaw의 다양한 도구와 메시징 채널 연동을 알아보세요.
